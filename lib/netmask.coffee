@@ -6,13 +6,54 @@ long2ip = (long) ->
     return [a, b, c, d].join('.')
 
 ip2long = (ip) ->
-    b = (ip + '').split('.');
-    if b.length is 0 or b.length > 4 then throw new Error('Invalid IP')
-    for byte, i in b
-        if isNaN parseInt(byte, 10) then throw new Error("Invalid byte: #{byte}")
-        if byte < 0 or byte > 255 then throw new Error("Invalid byte: #{byte}")
+    b = []
+    for i in [0..3]
+        if ip.length == 0
+            break
+        if i > 0
+            if ip[0] != '.'
+                throw new Error('Invalid IP')
+            ip = ip.substring(1)
+        [n, c] = atob(ip)
+        ip = ip.substring(c)
+        b.push(n)
+    if ip.length != 0
+        throw new Error('Invalid IP')
     return ((b[0] or 0) << 24 | (b[1] or 0) << 16 | (b[2] or 0) << 8 | (b[3] or 0)) >>> 0
 
+atob = (s) ->
+    n = 0
+    base = 10
+    dmax = '9'
+    i = 0
+    if s.length > 1 and s[i] == '0'
+        if s[i+1] == 'x' or s[i+1] == 'X'
+            i+=2
+            base = 16
+        else if '0' <= s[i+1] and s[i+1] <= '7'
+            i++
+            base = 8
+            dmax = '7'
+    start = i
+    chr = (b) -> return b.charCodeAt(0)
+    while s.length > 0
+        if '0' <= s[i] and s[i] <= dmax
+            n = n*base + (chr(s[i])-chr('0'))
+        else if base == 16
+            if 'a' <= s[i] and s[i] <= 'f'
+                n = n*base + (10+chr(s[i])-chr('a'))
+            else if 'A' <= s[i] and s[i] <= 'F'
+                n = n*base + (10+chr(s[i])-chr('A'))
+            else
+                break
+        else
+            break
+        if n > 0xFF
+            throw new Error('byte overflow')
+        i++
+    if i == start
+        throw new Error('empty octet')
+    return [n, i]
 
 class Netmask
     constructor: (net, mask) ->
